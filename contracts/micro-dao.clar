@@ -62,11 +62,17 @@
 (define-read-only (get-member-id (member-address principal)) 
     (ok (unwrap! (map-get? id-by-address member-address) (err MEMBER-NOT-FOUND))))
 
+(define-read-only (get-member-balance (member-id uint)) 
+    (ok (/ (get-balance-raw) (var-get members-count))))
+
 ;; get balance
 
 
+(define-read-only (get-balance-raw) 
+    (stx-get-balance (as-contract tx-sender)))
+
 (define-read-only (get-balance) 
-    (ok (stx-get-balance (as-contract tx-sender))))
+    (ok (get-balance-raw)))
 
 ;; propose to add new member
 

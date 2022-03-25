@@ -11,6 +11,8 @@ import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
  * Micro dao holds funds for people in a journey
  * Micro dao should receive funds through sending to the contract
  * Micro dao should have members
+ * As a member of DAO I should be able to create a funding proposal
+ * As a member of DAO I should be able to execute a funding proposal that had no dissent after 5 days (5 * 144 bitcoin block not stacks!!)
  */
 
 Clarinet.test({
@@ -94,6 +96,75 @@ Clarinet.test({
       ).result;
 
       assertEquals(accountId, "(err 1002)");
+    });
+  },
+});
+
+Clarinet.test({
+  name: "Ensure that each member has an equal amount of stx from the treasury",
+  async fn(chain: Chain, accounts: Map<string, Account>) {
+    let deployerWallet = accounts.get("deployer")!;
+    let contractAddress = deployerWallet.address + ".micro-dao";
+    let getContractBalance = () =>
+      chain.callReadOnlyFn(
+        contractAddress,
+        "get-balance",
+        [],
+        deployerWallet.address
+      );
+
+    let block = chain.mineBlock([
+      /*
+       * Add transactions with:
+       * Tx.contractCall(...)
+       */
+    ]);
+
+    assertEquals(getContractBalance().result, "(ok u0)");
+    assertEquals(block.receipts.length, 0);
+    assertEquals(block.height, 2);
+
+    const INITIAL_BALANCE = 100;
+
+    block = chain.mineBlock([
+      /*
+       * Add transactions with:
+       * Tx.contractCall(...)
+       */
+      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+    ]);
+    assertEquals(block.receipts.length, 1);
+    assertEquals(block.height, 3);
+
+    assertEquals(
+      getContractBalance().result,
+      types.ok(types.uint(INITIAL_BALANCE))
+    );
+
+    const initialMembers = [
+      accounts.get("deployer"),
+      accounts.get("wallet_1"),
+      accounts.get("wallet_2"),
+    ] as Account[];
+
+    const share = Math.floor(INITIAL_BALANCE / initialMembers.length);
+
+    initialMembers.forEach((acct) => {
+      let accountId = chain.callReadOnlyFn(
+        contractAddress,
+        "get-member-id",
+        [types.principal(acct?.address)],
+        deployerWallet.address
+      ).result;
+
+      [accountId] = accountId.match(/u\d+/) || [];
+      let accountShare = chain.callReadOnlyFn(
+        contractAddress,
+        "get-member-balance",
+        [accountId],
+        acct.address
+      ).result;
+      assertEquals(types.ok(types.uint(share)), accountShare);
     });
   },
 });
