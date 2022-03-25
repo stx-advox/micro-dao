@@ -13,6 +13,13 @@
 (define-constant MEMBER-EXISTS 1001)
 (define-constant MEMBER-NOT-FOUND 1002)
 
+;; balance error codes start with 2
+(define-constant NOT-ENOUGH-FUNDS 2001)
+
+;; auth error codes start with 3
+(define-constant NOT-DIRECT-CALLER 3001)
+(define-constant NOT-MEMBER 3002)
+
 ;; initial members of dao
 (define-constant INITIAL-MEMBERS 
     (list 
@@ -27,9 +34,11 @@
 
 (define-map members uint {address: principal})
 (define-map id-by-address principal uint)
+(define-map funding-proposals uint {targets: (list 10 {address: principal, amount: uint}), proposer: principal, created-at: uint})
 
 
 (define-data-var members-count uint u0)
+(define-data-var funding-proposals-count uint u0)
 
 ;; Funding proposals where we store funding proposals
 
@@ -48,6 +57,12 @@
                 (map-insert id-by-address (get address data) current-index)
                 (ok (var-set members-count (+ u1 current-index))))
             (err MEMBER-EXISTS))))
+
+(define-private (get-amount (target {address: principal, amount: uint})) 
+    (get amount target))
+
+(define-private (is-member (address principal))
+    (is-some (map-get? id-by-address address)))
 
 ;; public functions
 ;;
@@ -77,6 +92,21 @@
 ;; propose to add new member
 
 ;; propose a new funding proposal
+
+(define-public (create-funding-proposal (targets (list 10 {address: principal, amount: uint})))
+    (let (
+            (balance (get-balance-raw))
+            (total-amount (fold + (map get-amount targets) u0))
+            (current-index (var-get funding-proposals-count))
+            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height })
+        )
+        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (asserts! (is-member tx-sender) (err NOT-MEMBER))
+        (asserts! (< total-amount balance) (err NOT-ENOUGH-FUNDS))
+        (map-insert funding-proposals current-index data)
+        (var-set funding-proposals-count (+ u1 current-index))
+        ;; add to funding proposal list
+        (ok (merge data {id: current-index}))))
 
 ;; vote to support funding proposal
 
