@@ -14,6 +14,7 @@ import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
  * As a member I can view my current balance
  * As a member of DAO I should be able to create a funding proposal
  * As a member of DAO I should be able to execute a funding proposal that had no dissent after 5 days (5 * 144 bitcoin block not stacks!!)
+ *
  */
 
 Clarinet.test({
@@ -249,11 +250,11 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
+      `(ok {created-at: u2, failed: false, id: u0, passed: false, proposer: ${deployerWallet.address}, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
     );
 
     const notMember = block.receipts[1].result;
-    assertEquals(notMember, "(err 3002)");
+    assertEquals(notMember, types.err(types.int(3002)));
     const exceedsBalance = block.receipts[2].result;
     assertEquals(exceedsBalance, types.err(types.int(2001)));
     assertEquals(block.receipts.length, 3);

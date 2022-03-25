@@ -33,8 +33,19 @@
 ;; members of the DAO who could create funding proposals and manage their balances
 
 (define-map members uint {address: principal})
-(define-map id-by-address principal uint)
-(define-map funding-proposals uint {targets: (list 10 {address: principal, amount: uint}), proposer: principal, created-at: uint})
+(define-map member-id-by-address principal uint)
+(define-map funding-proposals uint 
+    {
+        targets: (list 10 
+            {
+                address: principal,
+                amount: uint
+            }), 
+        proposer: principal,
+        created-at: uint,
+        passed: bool,
+        failed: bool
+    })
 
 
 (define-data-var members-count uint u0)
@@ -54,7 +65,7 @@
         )
         (if (map-insert members current-index data) 
             (begin 
-                (map-insert id-by-address (get address data) current-index)
+                (map-insert member-id-by-address (get address data) current-index)
                 (ok (var-set members-count (+ u1 current-index))))
             (err MEMBER-EXISTS))))
 
@@ -62,7 +73,7 @@
     (get amount target))
 
 (define-private (is-member (address principal))
-    (is-some (map-get? id-by-address address)))
+    (is-some (map-get? member-id-by-address address)))
 
 ;; public functions
 ;;
@@ -75,7 +86,7 @@
 
 
 (define-read-only (get-member-id (member-address principal)) 
-    (ok (unwrap! (map-get? id-by-address member-address) (err MEMBER-NOT-FOUND))))
+    (ok (unwrap! (map-get? member-id-by-address member-address) (err MEMBER-NOT-FOUND))))
 
 (define-read-only (get-member-balance (member-id uint)) 
     (ok (/ (get-balance-raw) (var-get members-count))))
@@ -98,7 +109,7 @@
             (balance (get-balance-raw))
             (total-amount (fold + (map get-amount targets) u0))
             (current-index (var-get funding-proposals-count))
-            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height })
+            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, passed: false, failed: false })
         )
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
