@@ -171,7 +171,7 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Ensure that any member can create a funding",
+  name: "Ensure that any member can create a funding proposal",
   async fn(chain: Chain, accounts: Map<string, Account>) {
     let deployerWallet = accounts.get("deployer")!;
     let contractAddress = deployerWallet.address + ".micro-dao";
