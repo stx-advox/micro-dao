@@ -7,7 +7,14 @@
 ;;
 
 ;; 5 days before an action could be executed if no dissent was put up
-(define-constant DISSENT-EXPIRY (* 144 5))
+(define-constant DISSENT-EXPIRY (* u144 u5))
+
+
+;; proposal statuses
+
+(define-constant PROPOSED u0)
+(define-constant PASSED u1)
+(define-constant FAILED u2)
 
 ;; membership errors codes start with 1
 (define-constant MEMBER-EXISTS 1001)
@@ -19,6 +26,10 @@
 ;; auth error codes start with 3
 (define-constant NOT-DIRECT-CALLER 3001)
 (define-constant NOT-MEMBER 3002)
+
+;; proposal error codes start with 4
+(define-constant PROPOSAL-NOT-FOUND 4001)
+(define-constant PROPOSAL-DISSENT-EXPIRED 4002)
 
 ;; initial members of dao
 (define-constant INITIAL-MEMBERS 
@@ -43,8 +54,7 @@
             }), 
         proposer: principal,
         created-at: uint,
-        passed: bool,
-        failed: bool
+        status: uint
     })
 
 
@@ -100,7 +110,15 @@
 (define-read-only (get-balance) 
     (ok (get-balance-raw)))
 
+
+(define-read-only (is-dissent-passed (created-at uint)) 
+    (let (
+        (difference (- burn-block-height created-at))
+    )
+    (> difference DISSENT-EXPIRY)))
 ;; propose to add new member
+
+
 
 ;; propose a new funding proposal
 
@@ -109,7 +127,7 @@
             (balance (get-balance-raw))
             (total-amount (fold + (map get-amount targets) u0))
             (current-index (var-get funding-proposals-count))
-            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, passed: false, failed: false })
+            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, status: PROPOSED })
         )
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
@@ -118,6 +136,23 @@
         (var-set funding-proposals-count (+ u1 current-index))
         ;; add to funding proposal list
         (ok (merge data {id: current-index}))))
+
+
+;; dissent on funding proposal
+
+(define-public (dissent (proposal-id uint)) 
+    (let (
+            (proposal (unwrap! (map-get? funding-proposals proposal-id) (err PROPOSAL-NOT-FOUND)))
+            (created-at (get created-at proposal))
+            (status (get status proposal))
+        ) 
+        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (asserts! (is-member tx-sender) (err NOT-MEMBER))
+        (asserts! (not (is-dissent-passed created-at)) (err PROPOSAL-DISSENT-EXPIRED))
+        (asserts! (is-eq status PROPOSED) (err PROPOSAL-DISSENT-EXPIRED))
+        (map-set funding-proposals proposal-id (merge proposal {status: FAILED}))
+        
+        (ok { id: proposal-id })))
 
 ;; vote to support funding proposal
 

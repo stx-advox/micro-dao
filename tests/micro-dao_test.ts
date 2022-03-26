@@ -18,7 +18,7 @@ import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
  */
 
 Clarinet.test({
-  name: "Ensure that the micro-dao can tell how much balance it has",
+  name: `Ensure that the micro-dao can tell how much balance it has`,
   async fn(chain: Chain, accounts: Map<string, Account>) {
     let deployerWallet = accounts.get("deployer")!;
     let contractAddress = deployerWallet.address + ".micro-dao";
@@ -155,7 +155,7 @@ Clarinet.test({
       let accountId = chain.callReadOnlyFn(
         contractAddress,
         "get-member-id",
-        [types.principal(acct?.address)],
+        [types.principal(acct.address)],
         deployerWallet.address
       ).result;
 
@@ -172,7 +172,11 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: "Ensure that any member can create a funding proposal",
+  name: `Ensure that any member can create a funding proposal
+    While taking into consideration that:
+      - the creator is a member of the DAO
+      - the proposal's total amount doesn't exceed the treasury's balance
+      - the creator called the contract directly`,
   async fn(chain: Chain, accounts: Map<string, Account>) {
     let deployerWallet = accounts.get("deployer")!;
     let contractAddress = deployerWallet.address + ".micro-dao";
@@ -250,7 +254,7 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, failed: false, id: u0, passed: false, proposer: ${deployerWallet.address}, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
+      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
     );
 
     const notMember = block.receipts[1].result;
@@ -260,4 +264,130 @@ Clarinet.test({
     assertEquals(block.receipts.length, 3);
     assertEquals(block.height, 3);
   },
+});
+
+Clarinet.test({
+  name: `Ensure that a member can dissent on a funding proposal
+    While taking into consideration that:
+      - the creator called the contract directly
+      - the executor is a member of the DAO
+      - the proposal exists
+      - the proposal has no dissent already (noop)
+      - the proposal was not executed before (not necessary but will keep JIC)
+      - 5 days have not passed`,
+  fn(chain, accounts) {
+    const deployerWallet = accounts.get("deployer")!;
+    let contractAddress = deployerWallet.address + ".micro-dao";
+    const nonMember = accounts.get("wallet_5")!;
+    const INITIAL_BALANCE = 100;
+    let block = chain.mineBlock([
+      /*
+       * Add transactions with:
+       * Tx.contractCall(...)
+       */
+      // Tx.contractCall(contractAddress, )
+      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "create-funding-proposal",
+        [
+          types.list([
+            types.tuple({
+              address: types.principal(deployerWallet.address),
+              amount: types.uint(10),
+            }),
+          ]),
+        ],
+        deployerWallet.address
+      ),
+    ]);
+
+    assertEquals(block.receipts.length, 2);
+    assertEquals(block.height, 2);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(0)],
+        nonMember.address
+      ),
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+    ]);
+
+    const successfulDissent = block.receipts[0].result;
+    const nonMemberDissent = block.receipts[1].result;
+    const noopDissent = block.receipts[2].result;
+    assertEquals(successfulDissent, types.ok("{id: u0}"));
+
+    assertEquals(noopDissent, types.ok("{id: u0}"));
+
+    assertEquals(nonMemberDissent, types.err(types.int(3002)));
+    assertEquals(block.receipts.length, 3);
+    assertEquals(block.height, 3);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "create-funding-proposal",
+        [
+          types.list([
+            types.tuple({
+              address: types.principal(deployerWallet.address),
+              amount: types.uint(10),
+            }),
+          ]),
+        ],
+        deployerWallet.address
+      ),
+    ]);
+
+    // simulate 5 days passing
+    chain.mineEmptyBlockUntil(144 * 5.5);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(230)],
+        deployerWallet.address
+      ),
+    ]);
+
+    const tooLateDissent = block.receipts[0].result;
+    const proposalNotFound = block.receipts[1].result;
+
+    assertEquals(tooLateDissent, types.err(types.int(4002)));
+    assertEquals(proposalNotFound, types.err(types.int(4001)));
+  },
+});
+
+Clarinet.test({
+  name: `Ensure that a member can execute a funding
+    While taking into consideration that:
+      - the creator called the contract directly
+      - 5 days pass
+      - the treasury has enough funds
+      - the executor is a member of the DAO
+      - the proposal had no dissent
+      - the proposal was not executed before
+    `,
+  fn() {},
 });
