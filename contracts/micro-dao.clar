@@ -30,6 +30,9 @@
 ;; proposal error codes start with 4
 (define-constant PROPOSAL-NOT-FOUND 4001)
 (define-constant PROPOSAL-DISSENT-EXPIRED 4002)
+;; when proposal is no longer proposed and had either passed or failed
+;; no further changes should be made
+
 (define-constant PROPOSAL-FROZEN 4003)
 
 ;; initial members of dao
@@ -112,7 +115,7 @@
     (ok (get-balance-raw)))
 
 
-;; TODO: looks fishy
+
 (define-read-only (is-dissent-passed (created-at uint)) 
     (let (
         (difference (- burn-block-height created-at))
