@@ -354,7 +354,7 @@ Clarinet.test({
     ]);
 
     // simulate 5 days passing
-    chain.mineEmptyBlockUntil(144 * 5.5);
+    chain.mineEmptyBlockUntil(144 * 5);
 
     block = chain.mineBlock([
       Tx.contractCall(
@@ -387,7 +387,7 @@ Clarinet.test({
 });
 
 Clarinet.test({
-  name: `Ensure that a member can execute a funding
+  name: `Ensure that a member can execute a funding proposal
     While taking into consideration that:
       - the creator called the contract directly
       - 5 days pass

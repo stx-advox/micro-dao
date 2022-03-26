@@ -111,6 +111,7 @@
     (ok (get-balance-raw)))
 
 
+;; TODO: looks fishy
 (define-read-only (is-dissent-passed (created-at uint)) 
     (let (
         (difference (- burn-block-height created-at))
@@ -162,6 +163,20 @@
         (map-set funding-proposals proposal-id (merge proposal {status: FAILED}))
         
         (ok { id: proposal-id })))
+
+
+;; execute proposal
+;; take a proposal-id 
+;; check that:
+;; - the creator called the contract directly
+;; - 5 days pass
+;; - the treasury has enough funds
+;; - the executor is a member of the DAO
+;; - the proposal had no dissent
+;; - the proposal was not executed before
+;; get the list of targets to pay off
+;; send stx to the targets list 
+;; mark proposal as PASSED
 
 ;; vote to support funding proposal
 
