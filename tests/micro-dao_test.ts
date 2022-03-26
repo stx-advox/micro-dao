@@ -254,7 +254,7 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
+      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: 0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
     );
 
     const notMember = block.receipts[1].result;
@@ -331,7 +331,7 @@ Clarinet.test({
     const noopDissent = block.receipts[2].result;
     assertEquals(successfulDissent, types.ok("{id: u0}"));
 
-    assertEquals(noopDissent, types.ok("{id: u0}"));
+    assertEquals(noopDissent, types.err(types.int(4002)));
 
     assertEquals(nonMemberDissent, types.err(types.int(3002)));
     assertEquals(block.receipts.length, 3);
@@ -376,6 +376,13 @@ Clarinet.test({
 
     assertEquals(tooLateDissent, types.err(types.int(4002)));
     assertEquals(proposalNotFound, types.err(types.int(4001)));
+    const proposalStatus = chain.callReadOnlyFn(
+      contractAddress,
+      "get-proposal-status",
+      [types.uint(0)],
+      deployerWallet.address
+    ).result;
+    assertEquals(proposalStatus, types.ok(types.int(2)));
   },
 });
 

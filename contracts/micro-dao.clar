@@ -12,9 +12,9 @@
 
 ;; proposal statuses
 
-(define-constant PROPOSED u0)
-(define-constant PASSED u1)
-(define-constant FAILED u2)
+(define-constant PROPOSED 0)
+(define-constant PASSED 1)
+(define-constant FAILED 2)
 
 ;; membership errors codes start with 1
 (define-constant MEMBER-EXISTS 1001)
@@ -54,7 +54,7 @@
             }), 
         proposer: principal,
         created-at: uint,
-        status: uint
+        status: int
     })
 
 
@@ -119,6 +119,15 @@
 ;; propose to add new member
 
 
+(define-read-only (get-proposal-raw (proposal-id uint)) 
+    (map-get? funding-proposals proposal-id))
+
+(define-read-only (get-proposal (proposal-id uint))
+    (ok (unwrap! (get-proposal-raw proposal-id) (err PROPOSAL-NOT-FOUND))))
+
+(define-read-only (get-proposal-status (proposal-id uint)) 
+    (ok (unwrap! (get status (get-proposal-raw proposal-id)) (err PROPOSAL-NOT-FOUND))))
+
 
 ;; propose a new funding proposal
 
@@ -142,7 +151,7 @@
 
 (define-public (dissent (proposal-id uint)) 
     (let (
-            (proposal (unwrap! (map-get? funding-proposals proposal-id) (err PROPOSAL-NOT-FOUND)))
+            (proposal (unwrap! (get-proposal-raw proposal-id) (err PROPOSAL-NOT-FOUND)))
             (created-at (get created-at proposal))
             (status (get status proposal))
         ) 
