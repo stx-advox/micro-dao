@@ -30,6 +30,7 @@
 ;; proposal error codes start with 4
 (define-constant PROPOSAL-NOT-FOUND 4001)
 (define-constant PROPOSAL-DISSENT-EXPIRED 4002)
+(define-constant PROPOSAL-FROZEN 4003)
 
 ;; initial members of dao
 (define-constant INITIAL-MEMBERS 
@@ -116,7 +117,7 @@
     (let (
         (difference (- burn-block-height created-at))
     )
-    (> difference DISSENT-EXPIRY)))
+    (>= difference DISSENT-EXPIRY)))
 ;; propose to add new member
 
 
@@ -159,7 +160,7 @@
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
         (asserts! (not (is-dissent-passed created-at)) (err PROPOSAL-DISSENT-EXPIRED))
-        (asserts! (is-eq status PROPOSED) (err PROPOSAL-DISSENT-EXPIRED))
+        (asserts! (is-eq status PROPOSED) (err PROPOSAL-FROZEN))
         (map-set funding-proposals proposal-id (merge proposal {status: FAILED}))
         
         (ok { id: proposal-id })))

@@ -331,7 +331,7 @@ Clarinet.test({
     const noopDissent = block.receipts[2].result;
     assertEquals(successfulDissent, types.ok("{id: u0}"));
 
-    assertEquals(noopDissent, types.err(types.int(4002)));
+    assertEquals(noopDissent, types.err(types.int(4003)));
 
     assertEquals(nonMemberDissent, types.err(types.int(3002)));
     assertEquals(block.receipts.length, 3);
@@ -354,7 +354,7 @@ Clarinet.test({
     ]);
 
     // simulate 5 days passing
-    chain.mineEmptyBlockUntil(144 * 5);
+    chain.mineEmptyBlockUntil(144 * 5 + 10);
 
     block = chain.mineBlock([
       Tx.contractCall(
@@ -382,6 +382,7 @@ Clarinet.test({
       [types.uint(0)],
       deployerWallet.address
     ).result;
+    console.log(proposalStatus);
     assertEquals(proposalStatus, types.ok(types.int(2)));
   },
 });
