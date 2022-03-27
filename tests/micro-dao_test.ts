@@ -133,7 +133,12 @@ Clarinet.test({
        * Add transactions with:
        * Tx.contractCall(...)
        */
-      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "deposit",
+        [types.uint(INITIAL_BALANCE)],
+        deployerWallet.address
+      ),
     ]);
     assertEquals(block.receipts.length, 1);
     assertEquals(block.height, 3);
@@ -188,7 +193,12 @@ Clarinet.test({
        * Tx.contractCall(...)
        */
       // Tx.contractCall(contractAddress, )
-      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "deposit",
+        [types.uint(INITIAL_BALANCE)],
+        deployerWallet.address
+      ),
     ]);
 
     assertEquals(block.receipts.length, 1);
@@ -286,7 +296,12 @@ Clarinet.test({
        * Tx.contractCall(...)
        */
       // Tx.contractCall(contractAddress, )
-      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "deposit",
+        [types.uint(INITIAL_BALANCE)],
+        deployerWallet.address
+      ),
       Tx.contractCall(
         contractAddress,
         "create-funding-proposal",
@@ -408,7 +423,12 @@ Clarinet.test({
        * Tx.contractCall(...)
        */
       // Tx.contractCall(contractAddress, )
-      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "deposit",
+        [types.uint(INITIAL_BALANCE)],
+        deployerWallet.address
+      ),
       Tx.contractCall(
         contractAddress,
         "create-funding-proposal",
@@ -508,5 +528,31 @@ Clarinet.test({
     const proposalAlreadyExecuted = block.receipts[0].result;
 
     assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
+  },
+});
+
+Clarinet.test({
+  name: "Ensure that anyone can send stacks to contract",
+  async fn(chain, accounts) {
+    const deployerWallet = accounts.get("deployer")!;
+    const contractAddress = deployerWallet.address + ".micro-dao";
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "deposit",
+        [types.uint(100)],
+        deployerWallet.address
+      ),
+    ]);
+
+    let daoBalance = chain.callReadOnlyFn(
+      contractAddress,
+      "get-balance",
+      [],
+      deployerWallet.address
+    );
+
+    assertEquals(block.receipts.length, 1);
+    assertEquals(daoBalance.result, types.ok(types.uint(100)));
   },
 });

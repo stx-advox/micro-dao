@@ -207,7 +207,15 @@
     (map-set funding-proposals proposal-id (merge proposal {status: PASSED}))
     (fold check-err (map send-stx-to-target targets) (ok true))))
 
+(define-public (deposit (amount uint)) 
+    (begin 
+        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (stx-transfer? amount tx-sender (as-contract tx-sender))
+    ))
+
+
 ;; vote to support funding proposal
+
 
 ;; vote to support adding a new member
 
