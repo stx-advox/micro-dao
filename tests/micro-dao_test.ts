@@ -97,7 +97,7 @@ Clarinet.test({
         deployerWallet.address
       ).result;
 
-      assertEquals(accountId, "(err 1002)");
+      assertEquals(accountId, types.err(types.uint(1002)));
     });
   },
 });
@@ -254,13 +254,13 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: 0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
+      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
     );
 
     const notMember = block.receipts[1].result;
-    assertEquals(notMember, types.err(types.int(3002)));
+    assertEquals(notMember, types.err(types.uint(3002)));
     const exceedsBalance = block.receipts[2].result;
-    assertEquals(exceedsBalance, types.err(types.int(2001)));
+    assertEquals(exceedsBalance, types.err(types.uint(2001)));
     assertEquals(block.receipts.length, 3);
     assertEquals(block.height, 3);
   },
@@ -331,9 +331,9 @@ Clarinet.test({
     const noopDissent = block.receipts[2].result;
     assertEquals(successfulDissent, types.ok("{id: u0}"));
 
-    assertEquals(noopDissent, types.err(types.int(4003)));
+    assertEquals(noopDissent, types.err(types.uint(4003)));
 
-    assertEquals(nonMemberDissent, types.err(types.int(3002)));
+    assertEquals(nonMemberDissent, types.err(types.uint(3002)));
     assertEquals(block.receipts.length, 3);
     assertEquals(block.height, 3);
 
@@ -374,8 +374,8 @@ Clarinet.test({
     const tooLateDissent = block.receipts[0].result;
     const proposalNotFound = block.receipts[1].result;
 
-    assertEquals(tooLateDissent, types.err(types.int(4002)));
-    assertEquals(proposalNotFound, types.err(types.int(4001)));
+    assertEquals(tooLateDissent, types.err(types.uint(4002)));
+    assertEquals(proposalNotFound, types.err(types.uint(4001)));
     const proposalStatus = chain.callReadOnlyFn(
       contractAddress,
       "get-proposal-status",
@@ -383,7 +383,7 @@ Clarinet.test({
       deployerWallet.address
     ).result;
     console.log(proposalStatus);
-    assertEquals(proposalStatus, types.ok(types.int(2)));
+    assertEquals(proposalStatus, types.ok(types.uint(2)));
   },
 });
 
@@ -397,5 +397,116 @@ Clarinet.test({
       - the proposal had no dissent
       - the proposal was not executed before
     `,
-  fn() {},
+  async fn(chain, accounts) {
+    const deployerWallet = accounts.get("deployer")!;
+    let contractAddress = deployerWallet.address + ".micro-dao";
+    const nonMember = accounts.get("wallet_5")!;
+    const INITIAL_BALANCE = 100;
+    let block = chain.mineBlock([
+      /*
+       * Add transactions with:
+       * Tx.contractCall(...)
+       */
+      // Tx.contractCall(contractAddress, )
+      Tx.transferSTX(INITIAL_BALANCE, contractAddress, deployerWallet.address),
+      Tx.contractCall(
+        contractAddress,
+        "create-funding-proposal",
+        [
+          types.list([
+            types.tuple({
+              address: types.principal(deployerWallet.address),
+              amount: types.uint(10),
+            }),
+          ]),
+        ],
+        deployerWallet.address
+      ),
+    ]);
+
+    assertEquals(block.receipts.length, 2);
+    assertEquals(block.height, 2);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "execute-funding-proposal",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+    ]);
+    let dissentPeriodActive = block.receipts[0].result;
+
+    assertEquals(dissentPeriodActive, types.err(types.uint(4004)));
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "dissent",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+    ]);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "execute-funding-proposal",
+        [types.uint(0)],
+        deployerWallet.address
+      ),
+    ]);
+
+    const proposalHasDissent = block.receipts[0].result;
+    assertEquals(proposalHasDissent, types.err(types.uint(4003)));
+
+    block = chain.mineBlock([
+      /*
+       * Add transactions with:
+       * Tx.contractCall(...)
+       */
+      // Tx.contractCall(contractAddress, )
+      Tx.contractCall(
+        contractAddress,
+        "create-funding-proposal",
+        [
+          types.list([
+            types.tuple({
+              address: types.principal(deployerWallet.address),
+              amount: types.uint(10),
+            }),
+          ]),
+        ],
+        deployerWallet.address
+      ),
+    ]);
+
+    chain.mineEmptyBlockUntil(6 * 144 + 3);
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "execute-funding-proposal",
+        [types.uint(1)],
+        deployerWallet.address
+      ),
+    ]);
+
+    const successfulExecution = block.receipts[0].result;
+
+    assertEquals(successfulExecution, types.ok(types.bool(true)));
+
+    block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "execute-funding-proposal",
+        [types.uint(1)],
+        deployerWallet.address
+      ),
+    ]);
+
+    const proposalAlreadyExecuted = block.receipts[0].result;
+
+    assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
+  },
 });
