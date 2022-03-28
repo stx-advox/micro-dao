@@ -264,7 +264,7 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}]})`
+      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}], total-amount: u10})`
     );
 
     const notMember = block.receipts[1].result;

@@ -60,7 +60,8 @@
             }), 
         proposer: principal,
         created-at: uint,
-        status: uint
+        status: uint,
+        total-amount: uint
     })
 
 
@@ -160,10 +161,10 @@
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
         (asserts! (< total-amount balance) (err NOT-ENOUGH-FUNDS))
-        (map-insert funding-proposals current-index data)
+        (map-insert funding-proposals current-index (merge data { total-amount: total-amount }))
         (var-set funding-proposals-count (+ u1 current-index))
         ;; add to funding proposal list
-        (ok (merge data {id: current-index}))))
+        (ok (merge data {id: current-index, total-amount: total-amount}))))
 
 
 ;; dissent on funding proposal
@@ -176,7 +177,9 @@
         ) 
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
+        ;; #[filter(proposal-id)]
         (asserts! (not (is-dissent-passed created-at)) (err PROPOSAL-DISSENT-EXPIRED))
+        ;; #[filter(proposal-id)]
         (asserts! (is-eq status PROPOSED) (err PROPOSAL-FROZEN))
         (map-set funding-proposals proposal-id (merge proposal {status: FAILED}))
         
@@ -190,19 +193,23 @@
 ;; send stx to the targets list 
 ;; mark proposal as PASSED
 
+
 (define-public (execute-funding-proposal (proposal-id uint)) 
     (let (
         (proposal (unwrap! (get-proposal-raw proposal-id) (err PROPOSAL-NOT-FOUND)))
         (created-at (get created-at proposal))
         (balance (get-balance-raw))
         (targets (get targets proposal))
-        (total-amount (fold + (map get-amount targets) u0))
+        (total-amount (get total-amount proposal))
         (status (get status proposal))
     ) 
     (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
     (asserts! (is-member tx-sender) (err NOT-MEMBER))
+    ;; #[filter(proposal-id)]
     (asserts! (< total-amount balance) (err NOT-ENOUGH-FUNDS))
+    ;; #[filter(proposal-id)]
     (asserts! (is-eq status PROPOSED) (err PROPOSAL-FROZEN))
+    ;; #[filter(proposal-id)]
     (asserts! (is-dissent-passed created-at) (err PROPOSAL-DISSENT-ACTIVE))
     (map-set funding-proposals proposal-id (merge proposal {status: PASSED}))
     (fold check-err (map send-stx-to-target targets) (ok true))))
