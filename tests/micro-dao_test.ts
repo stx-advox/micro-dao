@@ -218,6 +218,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),
@@ -231,6 +232,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         nonMember.address
       ),
@@ -244,6 +246,7 @@ Clarinet.test({
               amount: types.uint(101),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),
@@ -264,7 +267,7 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}], total-amount: u10})`
+      `(ok {created-at: u2, id: u0, memo: u"money for zoom", proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}], total-amount: u10})`
     );
 
     const notMember = block.receipts[1].result;
@@ -312,6 +315,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),
@@ -363,6 +367,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),
@@ -439,6 +444,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),
@@ -496,6 +502,7 @@ Clarinet.test({
               amount: types.uint(10),
             }),
           ]),
+          types.utf8("money for zoom"),
         ],
         deployerWallet.address
       ),

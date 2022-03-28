@@ -61,7 +61,8 @@
         proposer: principal,
         created-at: uint,
         status: uint,
-        total-amount: uint
+        total-amount: uint,
+        memo: (string-utf8 50)
     })
 
 
@@ -151,12 +152,12 @@
 
 ;; propose a new funding proposal
 
-(define-public (create-funding-proposal (targets (list 10 {address: principal, amount: uint})))
+(define-public (create-funding-proposal (targets (list 10 {address: principal, amount: uint})) (memo (string-utf8 50)))
     (let (
             (balance (get-balance-raw))
             (total-amount (fold + (map get-amount targets) u0))
             (current-index (var-get funding-proposals-count))
-            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, status: PROPOSED })
+            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, status: PROPOSED, memo: memo })
         )
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
