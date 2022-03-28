@@ -160,7 +160,7 @@
         )
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
-        (asserts! (< total-amount balance) (err NOT-ENOUGH-FUNDS))
+        (asserts! (<= total-amount balance) (err NOT-ENOUGH-FUNDS))
         (map-insert funding-proposals current-index (merge data { total-amount: total-amount }))
         (var-set funding-proposals-count (+ u1 current-index))
         ;; add to funding proposal list
@@ -206,7 +206,7 @@
     (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
     (asserts! (is-member tx-sender) (err NOT-MEMBER))
     ;; #[filter(proposal-id)]
-    (asserts! (< total-amount balance) (err NOT-ENOUGH-FUNDS))
+    (asserts! (<= total-amount balance) (err NOT-ENOUGH-FUNDS))
     ;; #[filter(proposal-id)]
     (asserts! (is-eq status PROPOSED) (err PROPOSAL-FROZEN))
     ;; #[filter(proposal-id)]
