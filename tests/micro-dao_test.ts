@@ -267,7 +267,7 @@ Clarinet.test({
       //     ]),
       //   })
       // )
-      `(ok {created-at: u2, id: u0, memo: u"money for zoom", proposer: ${deployerWallet.address}, status: u0, targets: [{address: ${deployerWallet.address}, amount: u10}], total-amount: u10})`
+      types.ok(types.bool(true))
     );
 
     const notMember = block.receipts[1].result;
@@ -348,7 +348,7 @@ Clarinet.test({
     const successfulDissent = block.receipts[0].result;
     const nonMemberDissent = block.receipts[1].result;
     const noopDissent = block.receipts[2].result;
-    assertEquals(successfulDissent, types.ok("{id: u0}"));
+    assertEquals(successfulDissent, types.ok(types.bool(true)));
 
     assertEquals(noopDissent, types.err(types.uint(4003)));
 

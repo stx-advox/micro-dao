@@ -2,11 +2,14 @@
 ;; micro-dao
 ;;
 ;; Small contract to manage a simple DAO structure for small teams
+(impl-trait .micro-dao-trait.micro-dao)
 
 ;; constants
 ;;
 
 ;; 5 days before an action could be executed if no dissent was put up
+
+
 (define-constant DISSENT-EXPIRY (* u144 u5))
 
 
@@ -165,7 +168,7 @@
         (map-insert funding-proposals current-index (merge data { total-amount: total-amount }))
         (var-set funding-proposals-count (+ u1 current-index))
         ;; add to funding proposal list
-        (ok (merge data {id: current-index, total-amount: total-amount}))))
+        (ok true)))
 
 
 ;; dissent on funding proposal
@@ -184,7 +187,7 @@
         (asserts! (is-eq status PROPOSED) (err PROPOSAL-FROZEN))
         (map-set funding-proposals proposal-id (merge proposal {status: FAILED}))
         
-        (ok { id: proposal-id })))
+        (ok true)))
 
 
 ;; execute proposal

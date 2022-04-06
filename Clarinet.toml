@@ -4,9 +4,13 @@ authors = []
 description = ""
 telemetry = true
 requirements = []
+[contracts.micro-dao-trait]
+path = "contracts/micro-dao-trait.clar"
+depends_on = []
+
 [contracts.micro-dao]
 path = "contracts/micro-dao.clar"
-depends_on = []
+depends_on = ["micro-dao-trait"]
 
 [repl]
 costs_version = 2
