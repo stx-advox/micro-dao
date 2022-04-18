@@ -17,576 +17,527 @@ import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
  *
  */
 
-Clarinet.test({
-  name: `Ensure that the micro-dao can tell how much balance it has`,
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    let deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-    let getContractBalance = () =>
-      chain.callReadOnlyFn(
-        contractAddress,
-        "get-balance",
-        [],
-        deployerWallet.address
-      );
-
-    let block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-    ]);
-
-    assertEquals(getContractBalance().result, "(ok u0)");
-    assertEquals(block.receipts.length, 0);
-    assertEquals(block.height, 2);
-
-    block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      Tx.transferSTX(100, contractAddress, deployerWallet.address),
-    ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
-
-    assertEquals(getContractBalance().result, "(ok u100)");
-  },
-});
-
-Clarinet.test({
-  name: "Ensure that initial members are added",
-  async fn(chain, accounts, contracts) {
-    const initialMembers = [
-      accounts.get("deployer"),
-      accounts.get("wallet_1"),
-      accounts.get("wallet_2"),
-    ] as Account[];
-    const nonAccounts = [
-      accounts.get("wallet_3"),
-      accounts.get("wallet_4"),
-    ] as Account[];
-    let deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-
-    initialMembers.forEach((acct, index) => {
-      let accountId = chain.callReadOnlyFn(
-        contractAddress,
-        "get-member-id",
-        [types.principal(acct?.address)],
-        deployerWallet.address
-      ).result;
-
-      [accountId] = accountId.match(/u\d+/) || [];
-      assertEquals(
+const testToken = (token: string) => {
+  Clarinet.test({
+    name: `Ensure that the micro-dao can tell how much balance it has`,
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+      let deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
+      let tokenContractAddress = deployerWallet.address + token;
+      let INITIAL_BALANCE = 100;
+      console.log(types.principal(contractAddress));
+      let getContractBalance = () =>
         chain.callReadOnlyFn(
-          contractAddress,
-          "get-member-data",
-          [accountId],
+          tokenContractAddress,
+          "get-balance",
+          [types.principal(contractAddress)],
           deployerWallet.address
-        ).result,
-        `(ok {address: ${acct?.address}})`
-      );
-    });
-    nonAccounts.forEach((acct, index) => {
-      let accountId = chain.callReadOnlyFn(
-        contractAddress,
-        "get-member-id",
-        [types.principal(acct?.address)],
-        deployerWallet.address
-      ).result;
+        );
 
-      assertEquals(accountId, types.err(types.uint(1002)));
-    });
-  },
-});
+      let block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+      ]);
 
-Clarinet.test({
-  name: "Ensure that each member has an equal amount of stx from the treasury",
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    let deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-    let getContractBalance = () =>
-      chain.callReadOnlyFn(
-        contractAddress,
-        "get-balance",
-        [],
-        deployerWallet.address
-      );
+      assertEquals(getContractBalance().result, "(ok u0)");
+      assertEquals(block.receipts.length, 0);
+      assertEquals(block.height, 2);
 
-    let block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-    ]);
+      console.log(token, getContractBalance().result);
+      block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+      ]);
+      assertEquals(block.receipts.length, 1);
+      assertEquals(block.height, 3);
 
-    assertEquals(getContractBalance().result, "(ok u0)");
-    assertEquals(block.receipts.length, 0);
-    assertEquals(block.height, 2);
+      assertEquals(getContractBalance().result, "(ok u100)");
+    },
+  });
 
-    const INITIAL_BALANCE = 100;
+  Clarinet.test({
+    name: "Ensure that initial members are added",
+    async fn(chain, accounts, contracts) {
+      const initialMembers = [
+        accounts.get("deployer"),
+        accounts.get("wallet_1"),
+        accounts.get("wallet_2"),
+      ] as Account[];
+      const nonAccounts = [
+        accounts.get("wallet_3"),
+        accounts.get("wallet_4"),
+      ] as Account[];
+      let deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
 
-    block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      Tx.contractCall(
-        contractAddress,
-        "deposit",
-        [types.uint(INITIAL_BALANCE)],
-        deployerWallet.address
-      ),
-    ]);
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 3);
+      initialMembers.forEach((acct, index) => {
+        let accountId = chain.callReadOnlyFn(
+          contractAddress,
+          "get-member-id",
+          [types.principal(acct?.address)],
+          deployerWallet.address
+        ).result;
 
-    assertEquals(
-      getContractBalance().result,
-      types.ok(types.uint(INITIAL_BALANCE))
-    );
+        [accountId] = accountId.match(/u\d+/) || [];
+        assertEquals(
+          chain.callReadOnlyFn(
+            contractAddress,
+            "get-member-data",
+            [accountId],
+            deployerWallet.address
+          ).result,
+          `(ok {address: ${acct?.address}})`
+        );
+      });
+      nonAccounts.forEach((acct, index) => {
+        let accountId = chain.callReadOnlyFn(
+          contractAddress,
+          "get-member-id",
+          [types.principal(acct?.address)],
+          deployerWallet.address
+        ).result;
 
-    const initialMembers = [
-      accounts.get("deployer"),
-      accounts.get("wallet_1"),
-      accounts.get("wallet_2"),
-    ] as Account[];
-
-    const share = Math.floor(INITIAL_BALANCE / initialMembers.length);
-
-    initialMembers.forEach((acct) => {
-      let accountId = chain.callReadOnlyFn(
-        contractAddress,
-        "get-member-id",
-        [types.principal(acct.address)],
-        deployerWallet.address
-      ).result;
-
-      [accountId] = accountId.match(/u\d+/) || [];
-      let accountShare = chain.callReadOnlyFn(
-        contractAddress,
-        "get-member-balance",
-        [accountId],
-        acct.address
-      ).result;
-      assertEquals(types.ok(types.uint(share)), accountShare);
-    });
-  },
-});
-
-Clarinet.test({
-  name: `Ensure that any member can create a funding proposal
+        assertEquals(accountId, types.err(types.uint(1002)));
+      });
+    },
+  });
+  Clarinet.test({
+    name: `Ensure that any member can create a funding proposal
     While taking into consideration that:
       - the creator is a member of the DAO
       - the proposal's total amount doesn't exceed the treasury's balance
+      - the proposal's token is allowed
       - the creator called the contract directly`,
-  async fn(chain: Chain, accounts: Map<string, Account>) {
-    let deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-    const nonMember = accounts.get("wallet_5") as Account;
-    const INITIAL_BALANCE = 100;
-    let block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      // Tx.contractCall(contractAddress, )
-      Tx.contractCall(
-        contractAddress,
-        "deposit",
-        [types.uint(INITIAL_BALANCE)],
-        deployerWallet.address
-      ),
-    ]);
+    async fn(chain: Chain, accounts: Map<string, Account>) {
+      let deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
+      let tokenContractAddress = deployerWallet.address + token;
+      const nonMember = accounts.get("wallet_5") as Account;
+      const INITIAL_BALANCE = 100;
+      let block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        // Tx.contractCall(contractAddress, )
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+      ]);
 
-    assertEquals(block.receipts.length, 1);
-    assertEquals(block.height, 2);
-    block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        deployerWallet.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        nonMember.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(101),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        deployerWallet.address
-      ),
-    ]);
-    const shouldSucceed = block.receipts[0].result;
-    assertEquals(
-      shouldSucceed,
-      // types.ok(
-      //   types.tuple({
-      //     "created-at": types.uint(2),
-      //     id: types.uint(0),
-      //     proposer: deployerWallet.address,
-      //     targets: types.list([
-      //       types.tuple({
-      //         address: types.principal(deployerWallet.address),
-      //         amount: types.uint(10),
-      //       }),
-      //     ]),
-      //   })
-      // )
-      types.ok(types.bool(true))
-    );
+      assertEquals(block.receipts.length, 1);
+      assertEquals(block.height, 2);
+      block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          nonMember.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(101),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+      ]);
+      const shouldSucceed = block.receipts[0].result;
+      assertEquals(
+        shouldSucceed,
+        // types.ok(
+        //   types.tuple({
+        //     "created-at": types.uint(2),
+        //     id: types.uint(0),
+        //     proposer: deployerWallet.address,
+        //     targets: types.list([
+        //       types.tuple({
+        //         address: types.principal(deployerWallet.address),
+        //         amount: types.uint(10),
+        //       }),
+        //     ]),
+        //   })
+        // )
+        types.ok(types.bool(true))
+      );
 
-    const notMember = block.receipts[1].result;
-    assertEquals(notMember, types.err(types.uint(3002)));
-    const exceedsBalance = block.receipts[2].result;
-    assertEquals(exceedsBalance, types.err(types.uint(2001)));
-    assertEquals(block.receipts.length, 3);
-    assertEquals(block.height, 3);
-  },
-});
+      const notMember = block.receipts[1].result;
+      assertEquals(notMember, types.err(types.uint(3002)));
+      const exceedsBalance = block.receipts[2].result;
+      assertEquals(exceedsBalance, types.err(types.uint(2001)));
+      assertEquals(block.receipts.length, 3);
+      assertEquals(block.height, 3);
+    },
+  });
+  Clarinet.test({
+    name: `Ensure that a member can dissent on a funding proposal
+      While taking into consideration that:
+        - the creator called the contract directly
+        - the executor is a member of the DAO
+        - the proposal exists
+        - the proposal has no dissent already (noop)
+        - the proposal was not executed before (not necessary but will keep JIC)
+        - 5 days have not passed`,
+    fn(chain, accounts) {
+      const deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
+      let tokenContractAddress = deployerWallet.address + token;
+      const nonMember = accounts.get("wallet_5")!;
+      const INITIAL_BALANCE = 100;
+      let block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        // Tx.contractCall(contractAddress, )
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+      ]);
 
-Clarinet.test({
-  name: `Ensure that a member can dissent on a funding proposal
-    While taking into consideration that:
-      - the creator called the contract directly
-      - the executor is a member of the DAO
-      - the proposal exists
-      - the proposal has no dissent already (noop)
-      - the proposal was not executed before (not necessary but will keep JIC)
-      - 5 days have not passed`,
-  fn(chain, accounts) {
-    const deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-    const nonMember = accounts.get("wallet_5")!;
-    const INITIAL_BALANCE = 100;
-    let block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      // Tx.contractCall(contractAddress, )
-      Tx.contractCall(
-        contractAddress,
-        "deposit",
-        [types.uint(INITIAL_BALANCE)],
-        deployerWallet.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        deployerWallet.address
-      ),
-    ]);
+      assertEquals(block.receipts.length, 2);
+      assertEquals(block.height, 2);
 
-    assertEquals(block.receipts.length, 2);
-    assertEquals(block.height, 2);
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(0)],
+          deployerWallet.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(0)],
+          nonMember.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(0)],
+          deployerWallet.address
+        ),
+      ]);
 
-    block = chain.mineBlock([
-      Tx.contractCall(
+      const successfulDissent = block.receipts[0].result;
+      const nonMemberDissent = block.receipts[1].result;
+      const noopDissent = block.receipts[2].result;
+      assertEquals(successfulDissent, types.ok(types.bool(true)));
+
+      assertEquals(noopDissent, types.err(types.uint(4003)));
+
+      assertEquals(nonMemberDissent, types.err(types.uint(3002)));
+      assertEquals(block.receipts.length, 3);
+      assertEquals(block.height, 3);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+      ]);
+
+      // simulate 5 days passing
+      chain.mineEmptyBlockUntil(144 * 5 + 10);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(0)],
+          deployerWallet.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(230)],
+          deployerWallet.address
+        ),
+      ]);
+
+      const tooLateDissent = block.receipts[0].result;
+      const proposalNotFound = block.receipts[1].result;
+
+      assertEquals(tooLateDissent, types.err(types.uint(4002)));
+      assertEquals(proposalNotFound, types.err(types.uint(4001)));
+      const proposalStatus = chain.callReadOnlyFn(
         contractAddress,
-        "dissent",
+        "get-proposal-status",
         [types.uint(0)],
         deployerWallet.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "dissent",
-        [types.uint(0)],
-        nonMember.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "dissent",
-        [types.uint(0)],
+      ).result;
+      console.log(proposalStatus);
+      assertEquals(proposalStatus, types.ok(types.uint(2)));
+    },
+  });
+
+  Clarinet.test({
+    name: `Ensure that a member can execute a funding proposal
+      While taking into consideration that:
+        - the creator called the contract directly
+        - 5 days pass
+        - the treasury has enough funds
+        - the executor is a member of the DAO
+        - the proposal had no dissent
+        - the proposal was not executed before
+      `,
+    async fn(chain, accounts) {
+      const deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
+      let tokenContractAddress = deployerWallet.address + token;
+      const nonMember = accounts.get("wallet_5")!;
+      const INITIAL_BALANCE = 100;
+      let block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        // Tx.contractCall(contractAddress, )
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+      ]);
+
+      assertEquals(block.receipts.length, 2);
+      assertEquals(block.height, 2);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "execute-funding-proposal",
+          [types.uint(0), types.principal(tokenContractAddress)],
+          deployerWallet.address
+        ),
+      ]);
+      let dissentPeriodActive = block.receipts[0].result;
+
+      assertEquals(dissentPeriodActive, types.err(types.uint(4004)));
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "dissent",
+          [types.uint(0)],
+          deployerWallet.address
+        ),
+      ]);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "execute-funding-proposal",
+          [types.uint(0), types.principal(tokenContractAddress)],
+          deployerWallet.address
+        ),
+      ]);
+
+      const proposalHasDissent = block.receipts[0].result;
+      assertEquals(proposalHasDissent, types.err(types.uint(4003)));
+
+      block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        // Tx.contractCall(contractAddress, )
+        Tx.contractCall(
+          contractAddress,
+          "create-funding-proposal",
+          [
+            types.list([
+              types.tuple({
+                address: types.principal(deployerWallet.address),
+                amount: types.uint(10),
+              }),
+            ]),
+            types.utf8("money for zoom"),
+            types.principal(tokenContractAddress),
+          ],
+          deployerWallet.address
+        ),
+      ]);
+
+      chain.mineEmptyBlockUntil(6 * 144 + 3);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "execute-funding-proposal",
+          [types.uint(1), types.principal(tokenContractAddress)],
+          deployerWallet.address
+        ),
+      ]);
+
+      const successfulExecution = block.receipts[0].result;
+
+      assertEquals(successfulExecution, types.ok(types.bool(true)));
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "execute-funding-proposal",
+          [types.uint(1), types.principal(tokenContractAddress)],
+          deployerWallet.address
+        ),
+      ]);
+
+      const proposalAlreadyExecuted = block.receipts[0].result;
+
+      assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
+    },
+  });
+
+  Clarinet.test({
+    name: "Ensure that anyone can send stacks to contract",
+    async fn(chain, accounts) {
+      const deployerWallet = accounts.get("deployer")!;
+      const contractAddress = deployerWallet.address + ".micro-dao";
+      const tokenContractAddress = deployerWallet.address + token;
+      let block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(100)],
+          deployerWallet.address
+        ),
+      ]);
+
+      let daoBalance = chain.callReadOnlyFn(
+        tokenContractAddress,
+        "get-balance",
+        [types.principal(contractAddress)],
         deployerWallet.address
-      ),
-    ]);
+      );
 
-    const successfulDissent = block.receipts[0].result;
-    const nonMemberDissent = block.receipts[1].result;
-    const noopDissent = block.receipts[2].result;
-    assertEquals(successfulDissent, types.ok(types.bool(true)));
+      assertEquals(block.receipts.length, 1);
+      assertEquals(daoBalance.result, types.ok(types.uint(100)));
+    },
+  });
 
-    assertEquals(noopDissent, types.err(types.uint(4003)));
+  Clarinet.test({
+    name: "Ensure that anyone can deposit a whitelisted token to contract",
+    async fn(chain, accounts) {
+      const deployerWallet = accounts.get("deployer")!;
+      const contractAddress = deployerWallet.address + ".micro-dao";
+      const wmno8ContractAddress = deployerWallet.address + ".wmno8";
+      let block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(wmno8ContractAddress), types.uint(100)],
+          deployerWallet.address
+        ),
+      ]);
 
-    assertEquals(nonMemberDissent, types.err(types.uint(3002)));
-    assertEquals(block.receipts.length, 3);
-    assertEquals(block.height, 3);
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
+      let daoBalance = chain.callReadOnlyFn(
+        wmno8ContractAddress,
+        "get-balance",
+        [types.principal(contractAddress)],
         deployerWallet.address
-      ),
-    ]);
+      );
 
-    // simulate 5 days passing
-    chain.mineEmptyBlockUntil(144 * 5 + 10);
+      assertEquals(block.receipts.length, 1);
+      assertEquals(daoBalance.result, types.ok(types.uint(100)));
+    },
+  });
+};
 
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "dissent",
-        [types.uint(0)],
-        deployerWallet.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "dissent",
-        [types.uint(230)],
-        deployerWallet.address
-      ),
-    ]);
+testToken(".wstx");
 
-    const tooLateDissent = block.receipts[0].result;
-    const proposalNotFound = block.receipts[1].result;
-
-    assertEquals(tooLateDissent, types.err(types.uint(4002)));
-    assertEquals(proposalNotFound, types.err(types.uint(4001)));
-    const proposalStatus = chain.callReadOnlyFn(
-      contractAddress,
-      "get-proposal-status",
-      [types.uint(0)],
-      deployerWallet.address
-    ).result;
-    console.log(proposalStatus);
-    assertEquals(proposalStatus, types.ok(types.uint(2)));
-  },
-});
-
-Clarinet.test({
-  name: `Ensure that a member can execute a funding proposal
-    While taking into consideration that:
-      - the creator called the contract directly
-      - 5 days pass
-      - the treasury has enough funds
-      - the executor is a member of the DAO
-      - the proposal had no dissent
-      - the proposal was not executed before
-    `,
-  async fn(chain, accounts) {
-    const deployerWallet = accounts.get("deployer")!;
-    let contractAddress = deployerWallet.address + ".micro-dao";
-    const nonMember = accounts.get("wallet_5")!;
-    const INITIAL_BALANCE = 100;
-    let block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      // Tx.contractCall(contractAddress, )
-      Tx.contractCall(
-        contractAddress,
-        "deposit",
-        [types.uint(INITIAL_BALANCE)],
-        deployerWallet.address
-      ),
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        deployerWallet.address
-      ),
-    ]);
-
-    assertEquals(block.receipts.length, 2);
-    assertEquals(block.height, 2);
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "execute-funding-proposal",
-        [types.uint(0)],
-        deployerWallet.address
-      ),
-    ]);
-    let dissentPeriodActive = block.receipts[0].result;
-
-    assertEquals(dissentPeriodActive, types.err(types.uint(4004)));
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "dissent",
-        [types.uint(0)],
-        deployerWallet.address
-      ),
-    ]);
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "execute-funding-proposal",
-        [types.uint(0)],
-        deployerWallet.address
-      ),
-    ]);
-
-    const proposalHasDissent = block.receipts[0].result;
-    assertEquals(proposalHasDissent, types.err(types.uint(4003)));
-
-    block = chain.mineBlock([
-      /*
-       * Add transactions with:
-       * Tx.contractCall(...)
-       */
-      // Tx.contractCall(contractAddress, )
-      Tx.contractCall(
-        contractAddress,
-        "create-funding-proposal",
-        [
-          types.list([
-            types.tuple({
-              address: types.principal(deployerWallet.address),
-              amount: types.uint(10),
-            }),
-          ]),
-          types.utf8("money for zoom"),
-        ],
-        deployerWallet.address
-      ),
-    ]);
-
-    chain.mineEmptyBlockUntil(6 * 144 + 3);
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "execute-funding-proposal",
-        [types.uint(1)],
-        deployerWallet.address
-      ),
-    ]);
-
-    const successfulExecution = block.receipts[0].result;
-
-    assertEquals(successfulExecution, types.ok(types.bool(true)));
-
-    block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "execute-funding-proposal",
-        [types.uint(1)],
-        deployerWallet.address
-      ),
-    ]);
-
-    const proposalAlreadyExecuted = block.receipts[0].result;
-
-    assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
-  },
-});
-
-Clarinet.test({
-  name: "Ensure that anyone can send stacks to contract",
-  async fn(chain, accounts) {
-    const deployerWallet = accounts.get("deployer")!;
-    const contractAddress = deployerWallet.address + ".micro-dao";
-    let block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "deposit",
-        [types.uint(100)],
-        deployerWallet.address
-      ),
-    ]);
-
-    let daoBalance = chain.callReadOnlyFn(
-      contractAddress,
-      "get-balance",
-      [],
-      deployerWallet.address
-    );
-
-    assertEquals(block.receipts.length, 1);
-    assertEquals(daoBalance.result, types.ok(types.uint(100)));
-  },
-});
-
-Clarinet.test({
-  name: "Ensure that anyone can deposit a whitelisted token to contract",
-  async fn(chain, accounts) {
-    const deployerWallet = accounts.get("deployer")!;
-    const contractAddress = deployerWallet.address + ".micro-dao";
-    const wmno8ContractAddress = deployerWallet.address + ".wmno8";
-    let block = chain.mineBlock([
-      Tx.contractCall(
-        contractAddress,
-        "deposit-token",
-        [types.principal(wmno8ContractAddress), types.uint(100)],
-        deployerWallet.address
-      ),
-    ]);
-
-    let daoBalance = chain.callReadOnlyFn(
-      wmno8ContractAddress,
-      "get-balance",
-      [types.principal(contractAddress)],
-      deployerWallet.address
-    );
-
-    assertEquals(block.receipts.length, 1);
-    assertEquals(daoBalance.result, types.ok(types.uint(100)));
-  },
-});
+testToken(".wmno8");

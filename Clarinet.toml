@@ -4,22 +4,28 @@ authors = []
 description = ""
 telemetry = true
 requirements = []
-[contracts.micro-dao-trait]
-path = "contracts/micro-dao-trait.clar"
-depends_on = []
-
 [contracts.sip-010-trait-ft-standard]
 path = "contracts/sip-010-trait-ft-standard.clar"
 depends_on = []
+
+[contracts.micro-dao-trait]
+path = "contracts/micro-dao-trait.clar"
+depends_on = ["sip-010-trait-ft-standard"]
+
 
 [contracts.wmno8]
 path = "contracts/wmno8.clar"
 depends_on = ["sip-010-trait-ft-standard"]
 
+[contracts.wstx]
+path = "contracts/wstx.clar"
+depends_on = ["sip-010-trait-ft-standard"]
+
+
 
 [contracts.micro-dao]
 path = "contracts/micro-dao.clar"
-depends_on = ["micro-dao-trait", "sip-010-trait-ft-standard", "wmno8"]
+depends_on = ["micro-dao-trait", "sip-010-trait-ft-standard", "wmno8", "wstx"]
 
 
 [repl]

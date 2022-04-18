@@ -1,6 +1,7 @@
+(use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
+
 (define-trait micro-dao 
     (
-        (get-balance () (response uint uint))
         (get-proposal (uint) 
             (response 
                 {
@@ -12,15 +13,16 @@
                     proposer: principal,
                     created-at: uint,
                     status: uint,
+                    token-contract: principal,
                     total-amount: uint,
                     memo: (string-utf8 50)
                 }
                 uint
             )
         )
-        (create-funding-proposal ((list 10 {address: principal, amount: uint}) (string-utf8 50)) (response bool uint))
+        (create-funding-proposal ((list 10 {address: principal, amount: uint}) (string-utf8 50) <sip-010-trait>) (response bool uint))
         (dissent (uint) (response bool uint))
-        (execute-funding-proposal (uint) (response bool uint))
-        (deposit (uint) (response bool uint))
+        (execute-funding-proposal (uint <sip-010-trait>) (response bool uint))
+        (deposit (<sip-010-trait> uint) (response bool uint))
     )
 )

@@ -11,9 +11,10 @@
 
 ;; 5 days before an action could be executed if no dissent was put up
 
-(define-map allowed-tokens principal bool)
-
-(map-set allowed-tokens .wmno8 true)
+(define-constant ALLOWED-TOKENS (list 
+    .wmno8
+    ;; .wstx
+))
 
 
 (define-constant DISSENT-EXPIRY (* u144 u5))
@@ -49,6 +50,10 @@
 
 (define-constant PROPOSAL-DISSENT-ACTIVE u4004)
 
+
+;; outside contracts
+(define-constant WTF u0)
+
 ;; initial members of dao
 (define-constant INITIAL-MEMBERS 
     (list 
@@ -63,6 +68,10 @@
 
 (define-map members uint {address: principal})
 (define-map member-id-by-address principal uint)
+
+(define-map allowed-tokens principal bool)
+
+
 (define-map funding-proposals uint 
     {
         targets: (list 10 
@@ -71,11 +80,13 @@
                 amount: uint
             }), 
         proposer: principal,
+        token-contract: principal,
         created-at: uint,
         status: uint,
         total-amount: uint,
         memo: (string-utf8 50)
     })
+
 
 
 (define-data-var members-count uint u0)
@@ -99,18 +110,25 @@
                 (ok (var-set members-count (+ u1 current-index))))
             (err MEMBER-EXISTS))))
 
+
+(define-private (add-token (token-contract principal))
+    (map-set allowed-tokens token-contract true))
+
 (define-private (get-amount (target {address: principal, amount: uint})) 
     (get amount target))
 
 (define-private (is-member (address principal))
     (is-some (map-get? member-id-by-address address)))
 
-(define-private (send-stx-to-target (target {address: principal, amount: uint})) 
+
+(define-private (send-token-to-target (target {address: principal, amount: uint}) (token-contract <sip-010-trait>)) 
     (let (
         (amount (get amount target))
         (address (get address target))
-    ) 
-    (as-contract (stx-transfer? amount tx-sender address))))
+        (token-contract (contract-of token-contract))
+    )
+    (as-contract (token-transfer token-contract amount (as-contract tx-sender) address none))))
+
 
 
 (define-private (check-err (result (response bool uint)) (prior (response bool uint)))
@@ -120,6 +138,24 @@
 (define-private (token-transfer (contract <sip-010-trait>) (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
     (contract-call? contract transfer amount from to memo)
 )
+
+
+(define-private (get-balance (contract <sip-010-trait>) (account principal)) 
+    (contract-call? contract get-balance account))
+
+(define-private (repeat-10 (contract <sip-010-trait>)) 
+    (list
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        contract 
+        ))
 
 ;; public functions
 ;;
@@ -134,19 +170,6 @@
 (define-read-only (get-member-id (member-address principal)) 
     (ok (unwrap! (map-get? member-id-by-address member-address) (err MEMBER-NOT-FOUND))))
 
-(define-read-only (get-member-balance (member-id uint)) 
-    (ok (/ (get-balance-raw) (var-get members-count))))
-
-;; get balance
-
-
-(define-read-only (get-balance-raw) 
-    (stx-get-balance (as-contract tx-sender)))
-
-(define-read-only (get-balance) 
-    (ok (get-balance-raw)))
-
-
 
 (define-read-only (is-dissent-passed (created-at uint)) 
     (let (
@@ -156,11 +179,12 @@
 ;; propose to add new member
 
 
-(define-read-only (get-proposal-raw (proposal-id uint)) 
+(define-read-only (get-proposal-raw (proposal-id uint))  
     (map-get? funding-proposals proposal-id))
 
 (define-read-only (get-proposal (proposal-id uint))
     (ok (unwrap! (get-proposal-raw proposal-id) (err PROPOSAL-NOT-FOUND))))
+
 
 (define-read-only (get-proposal-status (proposal-id uint)) 
     (ok (unwrap! (get status (get-proposal-raw proposal-id)) (err PROPOSAL-NOT-FOUND))))
@@ -174,14 +198,17 @@
 
 ;; propose a new funding proposal
 
-(define-public (create-funding-proposal (targets (list 10 {address: principal, amount: uint})) (memo (string-utf8 50)))
+(define-public (create-funding-proposal (targets (list 10 {address: principal, amount: uint})) (memo (string-utf8 50)) (token-contract <sip-010-trait>))
     (let (
-            (balance (get-balance-raw))
+            ;; wtf on error cuz it should nevah
+            (balance (unwrap! (get-balance token-contract (as-contract tx-sender)) (err WTF)))
             (total-amount (fold + (map get-amount targets) u0))
             (current-index (var-get funding-proposals-count))
-            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, status: PROPOSED, memo: memo })
+            (data { targets: targets, proposer: tx-sender, created-at: burn-block-height, status: PROPOSED, memo: memo, token-contract: (contract-of token-contract) })
         )
+        
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (asserts! (is-valid-token (contract-of token-contract)) (err INVALID-TOKEN))
         (asserts! (is-member tx-sender) (err NOT-MEMBER))
         (asserts! (<= total-amount balance) (err NOT-ENOUGH-FUNDS))
         (map-insert funding-proposals current-index (merge data { total-amount: total-amount }))
@@ -190,7 +217,9 @@
         (ok true)))
 
 
+
 ;; dissent on funding proposal
+
 
 (define-public (dissent (proposal-id uint)) 
     (let (
@@ -217,11 +246,11 @@
 ;; mark proposal as PASSED
 
 
-(define-public (execute-funding-proposal (proposal-id uint)) 
+(define-public (execute-funding-proposal (proposal-id uint) (token-contract <sip-010-trait>)) 
     (let (
         (proposal (unwrap! (get-proposal-raw proposal-id) (err PROPOSAL-NOT-FOUND)))
         (created-at (get created-at proposal))
-        (balance (get-balance-raw))
+        (balance (unwrap! (get-balance token-contract (as-contract tx-sender)) (err WTF)))
         (targets (get targets proposal))
         (total-amount (get total-amount proposal))
         (status (get status proposal))
@@ -235,23 +264,21 @@
     ;; #[filter(proposal-id)]
     (asserts! (is-dissent-passed created-at) (err PROPOSAL-DISSENT-ACTIVE))
     (map-set funding-proposals proposal-id (merge proposal {status: PASSED}))
-    (fold check-err (map send-stx-to-target targets) (ok true))))
+    (fold check-err (map send-token-to-target targets (repeat-10 token-contract)) (ok true))))
 
-(define-public (deposit (amount uint)) 
-    (begin 
-        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
-        (stx-transfer? amount tx-sender (as-contract tx-sender))
-    ))
 
-(define-public (deposit-token (token-contract <sip-010-trait>) (amount uint))
-    (begin 
+(define-public (deposit (token-contract <sip-010-trait>) (amount uint))
+    (let (
+        (balance (unwrap! (get-balance token-contract  tx-sender) (err WTF)))
+    ) 
         (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
         (asserts! (is-valid-token (contract-of token-contract)) (err INVALID-TOKEN))
+        (asserts! (>= balance amount) (err NOT-ENOUGH-FUNDS))
         (token-transfer token-contract amount tx-sender (as-contract tx-sender) none)
     ))
 
 ;; INIT
 ;;
 
-
+(map add-token ALLOWED-TOKENS)
 (map add-member INITIAL-MEMBERS)
