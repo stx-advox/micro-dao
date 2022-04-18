@@ -563,3 +563,30 @@ Clarinet.test({
     assertEquals(daoBalance.result, types.ok(types.uint(100)));
   },
 });
+
+Clarinet.test({
+  name: "Ensure that anyone can deposit a whitelisted token to contract",
+  async fn(chain, accounts) {
+    const deployerWallet = accounts.get("deployer")!;
+    const contractAddress = deployerWallet.address + ".micro-dao";
+    const wmno8ContractAddress = deployerWallet.address + ".wmno8";
+    let block = chain.mineBlock([
+      Tx.contractCall(
+        contractAddress,
+        "deposit-token",
+        [types.principal(wmno8ContractAddress), types.uint(100)],
+        deployerWallet.address
+      ),
+    ]);
+
+    let daoBalance = chain.callReadOnlyFn(
+      wmno8ContractAddress,
+      "get-balance",
+      [types.principal(contractAddress)],
+      deployerWallet.address
+    );
+
+    assertEquals(block.receipts.length, 1);
+    assertEquals(daoBalance.result, types.ok(types.uint(100)));
+  },
+});

@@ -8,9 +8,19 @@ requirements = []
 path = "contracts/micro-dao-trait.clar"
 depends_on = []
 
+[contracts.sip-010-trait-ft-standard]
+path = "contracts/sip-010-trait-ft-standard.clar"
+depends_on = []
+
+[contracts.wmno8]
+path = "contracts/wmno8.clar"
+depends_on = ["sip-010-trait-ft-standard"]
+
+
 [contracts.micro-dao]
 path = "contracts/micro-dao.clar"
-depends_on = ["micro-dao-trait"]
+depends_on = ["micro-dao-trait", "sip-010-trait-ft-standard", "wmno8"]
+
 
 [repl]
 costs_version = 2

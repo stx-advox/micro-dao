@@ -4,10 +4,16 @@
 ;; Small contract to manage a simple DAO structure for small teams
 (impl-trait .micro-dao-trait.micro-dao)
 
+(use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
+
 ;; constants
 ;;
 
 ;; 5 days before an action could be executed if no dissent was put up
+
+(define-map allowed-tokens principal bool)
+
+(map-set allowed-tokens .wmno8 true)
 
 
 (define-constant DISSENT-EXPIRY (* u144 u5))
@@ -29,10 +35,13 @@
 ;; auth error codes start with 3
 (define-constant NOT-DIRECT-CALLER u3001)
 (define-constant NOT-MEMBER u3002)
+(define-constant INVALID-TOKEN u3003)
 
 ;; proposal error codes start with 4
 (define-constant PROPOSAL-NOT-FOUND u4001)
 (define-constant PROPOSAL-DISSENT-EXPIRED u4002)
+
+
 ;; when proposal is no longer proposed and had either passed or failed
 ;; no further changes should be made
 
@@ -108,6 +117,10 @@
     (match prior ok-value result
         err-value (err err-value)))
 
+(define-private (token-transfer (contract <sip-010-trait>) (amount uint) (from principal) (to principal) (memo (optional (buff 34))))
+    (contract-call? contract transfer amount from to memo)
+)
+
 ;; public functions
 ;;
 
@@ -151,6 +164,12 @@
 
 (define-read-only (get-proposal-status (proposal-id uint)) 
     (ok (unwrap! (get status (get-proposal-raw proposal-id)) (err PROPOSAL-NOT-FOUND))))
+
+
+(define-read-only (is-valid-token (contract principal))
+    (is-some (map-get? allowed-tokens contract)))
+
+
 
 
 ;; propose a new funding proposal
@@ -224,14 +243,12 @@
         (stx-transfer? amount tx-sender (as-contract tx-sender))
     ))
 
-
-;; vote to support funding proposal
-
-
-;; vote to support adding a new member
-
-;; exit dao
-
+(define-public (deposit-token (token-contract <sip-010-trait>) (amount uint))
+    (begin 
+        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (asserts! (is-valid-token (contract-of token-contract)) (err INVALID-TOKEN))
+        (token-transfer token-contract amount tx-sender (as-contract tx-sender) none)
+    ))
 
 ;; INIT
 ;;
