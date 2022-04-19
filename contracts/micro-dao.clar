@@ -144,18 +144,7 @@
     (contract-call? contract get-balance account))
 
 (define-private (repeat-10 (contract <sip-010-trait>)) 
-    (list
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        contract 
-        ))
+    (list contract contract contract contract contract contract contract contract contract contract))
 
 ;; public functions
 ;;
