@@ -12,8 +12,8 @@
 ;; 5 days before an action could be executed if no dissent was put up
 
 (define-constant ALLOWED-TOKENS (list 
-    .wmno8
-    ;; .wstx
+    ;; .wmno8
+    .wstx
 ))
 
 
