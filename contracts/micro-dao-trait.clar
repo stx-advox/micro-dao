@@ -1,6 +1,6 @@
 (use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
 
-(define-trait micro-dao 
+(define-trait micro-dao-sip-010-trait
     (
         (get-proposal (uint) 
             (response 

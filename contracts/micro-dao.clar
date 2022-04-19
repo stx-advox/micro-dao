@@ -2,7 +2,7 @@
 ;; micro-dao
 ;;
 ;; Small contract to manage a simple DAO structure for small teams
-(impl-trait .micro-dao-trait.micro-dao)
+(impl-trait .micro-dao-trait.micro-dao-sip-010-trait)
 
 (use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
 
@@ -242,9 +242,12 @@
         (balance (unwrap! (get-balance token-contract (as-contract tx-sender)) (err WTF)))
         (targets (get targets proposal))
         (total-amount (get total-amount proposal))
+        (proposal-contract (get token-contract proposal))
         (status (get status proposal))
     ) 
     (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+    (asserts! (is-valid-token (contract-of token-contract)) (err INVALID-TOKEN))
+    (asserts! (is-eq (contract-of token-contract) proposal-contract) (err INVALID-TOKEN))
     (asserts! (is-member tx-sender) (err NOT-MEMBER))
     ;; #[filter(proposal-id)]
     (asserts! (<= total-amount balance) (err NOT-ENOUGH-FUNDS))
