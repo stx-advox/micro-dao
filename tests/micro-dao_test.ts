@@ -11,15 +11,18 @@ import { assertEquals } from "https://deno.land/std@0.90.0/testing/asserts.ts";
  * Micro dao holds funds for people in a journey
  * Micro dao should receive funds through sending to the contract
  * Micro dao should have members
- * As a member I can view my current balance
  * As a member of DAO I should be able to create a funding proposal
- * As a member of DAO I should be able to execute a funding proposal that had no dissent after 5 days (5 * 144 bitcoin block not stacks!!)
+ * As a member of DAO I should be able to execute a funding proposal that had no dissent after X days (X * 144 bitcoin block not stacks!!)
  *
  */
 
+const ALLOWED_TOKENS = [
+  ".wstx",
+  // ".wmno8"
+];
 const testToken = (token: string) => {
   Clarinet.test({
-    name: `Ensure that the micro-dao can tell how much balance it has`,
+    name: `Ensure that anyone can deposit a whitelisted token to contract`,
     async fn(chain: Chain, accounts: Map<string, Account>) {
       let deployerWallet = accounts.get("deployer")!;
       let contractAddress = deployerWallet.address + ".micro-dao";
@@ -45,6 +48,12 @@ const testToken = (token: string) => {
       assertEquals(block.receipts.length, 0);
       assertEquals(block.height, 2);
 
+      let expectedResult = types.ok(types.uint(INITIAL_BALANCE));
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        expectedResult = types.ok(types.uint(0));
+      }
+
       console.log(token, getContractBalance().result);
       block = chain.mineBlock([
         /*
@@ -61,7 +70,15 @@ const testToken = (token: string) => {
       assertEquals(block.receipts.length, 1);
       assertEquals(block.height, 3);
 
-      assertEquals(getContractBalance().result, "(ok u100)");
+      let txResult = block.receipts[0].result;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        assertEquals(txResult, types.err(types.uint(3003)));
+      } else {
+        assertEquals(txResult, types.ok(types.bool(true)));
+      }
+
+      assertEquals(getContractBalance().result, expectedResult);
     },
   });
 
@@ -191,31 +208,39 @@ const testToken = (token: string) => {
           deployerWallet.address
         ),
       ]);
-      const shouldSucceed = block.receipts[0].result;
-      assertEquals(
-        shouldSucceed,
-        // types.ok(
-        //   types.tuple({
-        //     "created-at": types.uint(2),
-        //     id: types.uint(0),
-        //     proposer: deployerWallet.address,
-        //     targets: types.list([
-        //       types.tuple({
-        //         address: types.principal(deployerWallet.address),
-        //         amount: types.uint(10),
-        //       }),
-        //     ]),
-        //   })
-        // )
-        types.ok(types.bool(true))
-      );
+      let txResults = block.receipts;
 
-      const notMember = block.receipts[1].result;
-      assertEquals(notMember, types.err(types.uint(3002)));
-      const exceedsBalance = block.receipts[2].result;
-      assertEquals(exceedsBalance, types.err(types.uint(2001)));
-      assertEquals(block.receipts.length, 3);
-      assertEquals(block.height, 3);
+      if (!ALLOWED_TOKENS.includes(token)) {
+        txResults.forEach(({ result }) => {
+          assertEquals(result, types.err(types.uint(3003)));
+        });
+      } else {
+        const shouldSucceed = block.receipts[0].result;
+        assertEquals(
+          shouldSucceed,
+          // types.ok(
+          //   types.tuple({
+          //     "created-at": types.uint(2),
+          //     id: types.uint(0),
+          //     proposer: deployerWallet.address,
+          //     targets: types.list([
+          //       types.tuple({
+          //         address: types.principal(deployerWallet.address),
+          //         amount: types.uint(10),
+          //       }),
+          //     ]),
+          //   })
+          // )
+          types.ok(types.bool(true))
+        );
+
+        const notMember = block.receipts[1].result;
+        assertEquals(notMember, types.err(types.uint(3002)));
+        const exceedsBalance = block.receipts[2].result;
+        assertEquals(exceedsBalance, types.err(types.uint(2001)));
+        assertEquals(block.receipts.length, 3);
+        assertEquals(block.height, 3);
+      }
     },
   });
   Clarinet.test({
@@ -262,6 +287,14 @@ const testToken = (token: string) => {
         ),
       ]);
 
+      let txResults = block.receipts;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        txResults.forEach(({ result }) => {
+          assertEquals(result, types.err(types.uint(3003)));
+        });
+      }
+
       assertEquals(block.receipts.length, 2);
       assertEquals(block.height, 2);
 
@@ -285,6 +318,15 @@ const testToken = (token: string) => {
           deployerWallet.address
         ),
       ]);
+
+      txResults = block.receipts;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        txResults.forEach(({ result }) => {
+          assertEquals(result, types.err(types.uint(4001)));
+        });
+        return;
+      }
 
       const successfulDissent = block.receipts[0].result;
       const nonMemberDissent = block.receipts[1].result;
@@ -394,6 +436,14 @@ const testToken = (token: string) => {
         ),
       ]);
 
+      let txResults = block.receipts;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        txResults.forEach(({ result }) => {
+          assertEquals(result, types.err(types.uint(3003)));
+        });
+      }
+
       assertEquals(block.receipts.length, 2);
       assertEquals(block.height, 2);
 
@@ -405,6 +455,14 @@ const testToken = (token: string) => {
           deployerWallet.address
         ),
       ]);
+      txResults = block.receipts;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        txResults.forEach(({ result }) => {
+          assertEquals(result, types.err(types.uint(4001)));
+        });
+        return;
+      }
       let dissentPeriodActive = block.receipts[0].result;
 
       assertEquals(dissentPeriodActive, types.err(types.uint(4004)));
@@ -480,60 +538,6 @@ const testToken = (token: string) => {
       const proposalAlreadyExecuted = block.receipts[0].result;
 
       assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
-    },
-  });
-
-  Clarinet.test({
-    name: "Ensure that anyone can send stacks to contract",
-    async fn(chain, accounts) {
-      const deployerWallet = accounts.get("deployer")!;
-      const contractAddress = deployerWallet.address + ".micro-dao";
-      const tokenContractAddress = deployerWallet.address + token;
-      let block = chain.mineBlock([
-        Tx.contractCall(
-          contractAddress,
-          "deposit",
-          [types.principal(tokenContractAddress), types.uint(100)],
-          deployerWallet.address
-        ),
-      ]);
-
-      let daoBalance = chain.callReadOnlyFn(
-        tokenContractAddress,
-        "get-balance",
-        [types.principal(contractAddress)],
-        deployerWallet.address
-      );
-
-      assertEquals(block.receipts.length, 1);
-      assertEquals(daoBalance.result, types.ok(types.uint(100)));
-    },
-  });
-
-  Clarinet.test({
-    name: "Ensure that anyone can deposit a whitelisted token to contract",
-    async fn(chain, accounts) {
-      const deployerWallet = accounts.get("deployer")!;
-      const contractAddress = deployerWallet.address + ".micro-dao";
-      const wmno8ContractAddress = deployerWallet.address + ".wmno8";
-      let block = chain.mineBlock([
-        Tx.contractCall(
-          contractAddress,
-          "deposit",
-          [types.principal(wmno8ContractAddress), types.uint(100)],
-          deployerWallet.address
-        ),
-      ]);
-
-      let daoBalance = chain.callReadOnlyFn(
-        wmno8ContractAddress,
-        "get-balance",
-        [types.principal(contractAddress)],
-        deployerWallet.address
-      );
-
-      assertEquals(block.receipts.length, 1);
-      assertEquals(daoBalance.result, types.ok(types.uint(100)));
     },
   });
 };

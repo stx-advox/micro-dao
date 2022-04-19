@@ -13,7 +13,7 @@
 
 (define-constant ALLOWED-TOKENS (list 
     .wmno8
-    .wstx
+    ;; .wstx
 ))
 
 
