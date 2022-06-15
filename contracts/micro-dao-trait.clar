@@ -1,6 +1,6 @@
 (use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
 
-(define-trait micro-dao-sip-010-trait
+(define-trait micro-dao-journeys-trait
     (
         (get-proposal (uint) 
             (response 
@@ -24,5 +24,6 @@
         (dissent (uint) (response bool uint))
         (execute-funding-proposal (uint <sip-010-trait>) (response bool uint))
         (deposit (<sip-010-trait> uint) (response bool uint))
+        (withdraw-funds (<sip-010-trait> uint) (response bool uint))
     )
 )

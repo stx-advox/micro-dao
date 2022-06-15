@@ -2,7 +2,7 @@
 ;; micro-dao
 ;;
 ;; Small contract to manage a simple DAO structure for small teams
-(impl-trait .micro-dao-trait.micro-dao-sip-010-trait)
+(impl-trait .micro-dao-trait.micro-dao-journeys-trait)
 
 (use-trait sip-010-trait .sip-010-trait-ft-standard.sip-010-trait)
 
