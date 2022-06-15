@@ -554,6 +554,76 @@ const testToken = (token: string) => {
       assertEquals(proposalAlreadyExecuted, types.err(types.uint(4003)));
     },
   });
+
+  Clarinet.test({
+    name: `Ensure that admins can withdraw funds directly from the treasury`,
+    async fn(chain, accounts) {
+      const deployerWallet = accounts.get("deployer")!;
+      let contractAddress = deployerWallet.address + ".micro-dao";
+      let tokenContractAddress = deployerWallet.address + token;
+      const admin = accounts.get("wallet_3")!;
+      let block = chain.mineBlock([
+        /*
+         * Add transactions with:
+         * Tx.contractCall(...)
+         */
+        // Tx.contractCall(contractAddress, )
+        Tx.contractCall(
+          contractAddress,
+          "deposit",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+      ]);
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "withdraw-funds",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          admin.address
+        ),
+      ]);
+
+      const successfulWithdrawal = block.receipts[0].result;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        assertEquals(successfulWithdrawal, types.err(types.uint(3003)));
+      } else {
+        assertEquals(successfulWithdrawal, types.ok(types.bool(true)));
+      }
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "withdraw-funds",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          admin.address
+        ),
+      ]);
+
+      const withdrawalAlreadyWithdrawn = block.receipts[0].result;
+
+      if (!ALLOWED_TOKENS.includes(token)) {
+        assertEquals(withdrawalAlreadyWithdrawn, types.err(types.uint(3003)));
+      } else {
+        assertEquals(withdrawalAlreadyWithdrawn, types.err(types.uint(2001)));
+      }
+
+      block = chain.mineBlock([
+        Tx.contractCall(
+          contractAddress,
+          "withdraw-funds",
+          [types.principal(tokenContractAddress), types.uint(INITIAL_BALANCE)],
+          deployerWallet.address
+        ),
+      ]);
+
+      const notAdmin = block.receipts[0].result;
+
+      assertEquals(notAdmin, types.err(types.uint(3004)));
+    },
+  });
 };
 
 testToken(".wstx");

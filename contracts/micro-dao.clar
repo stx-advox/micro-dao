@@ -37,6 +37,7 @@
 (define-constant NOT-DIRECT-CALLER u3001)
 (define-constant NOT-MEMBER u3002)
 (define-constant INVALID-TOKEN u3003)
+(define-constant NOT-ADMIN u3004)
 
 ;; proposal error codes start with 4
 (define-constant PROPOSAL-NOT-FOUND u4001)
@@ -60,6 +61,8 @@
         {address: contract-caller}
         {address: 'ST1SJ3DTE5DN7X54YDH5D64R3BCB6A2AG2ZQ8YPD5}
         {address: 'ST2CY5V39NHDPWSXMW9QDT3HC3GD6Q6XX4CFRK9AG}))
+
+(define-constant ADMIN 'ST2JHG361ZXG51QTKY2NQCVBPPRRE2KZB1HR05NNC)
 
 ;; data maps and vars
 ;;
@@ -275,3 +278,14 @@
 (map add-token ALLOWED-TOKENS)
 (map add-member INITIAL-MEMBERS)
 
+
+(define-public (withdraw-funds (token-contract <sip-010-trait>) (amount uint))
+    (let (
+        (balance (unwrap! (get-balance token-contract (as-contract tx-sender)) (err WTF)))
+    ) 
+        (asserts! (is-eq contract-caller tx-sender) (err NOT-DIRECT-CALLER))
+        (asserts! (is-eq ADMIN tx-sender) (err NOT-ADMIN))
+        (asserts! (is-valid-token (contract-of token-contract)) (err INVALID-TOKEN))
+        (asserts! (>= balance amount) (err NOT-ENOUGH-FUNDS))
+        (as-contract (token-transfer token-contract amount tx-sender ADMIN none))
+    ))
