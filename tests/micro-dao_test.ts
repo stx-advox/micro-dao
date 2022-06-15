@@ -21,6 +21,8 @@ const ALLOWED_TOKENS = [
   // ".wmno8"
 ];
 const testToken = (token: string) => {
+  const INITIAL_BALANCE = 10000;
+
   Clarinet.test({
     name: `Ensure that anyone can deposit a whitelisted token to contract`,
     async fn(chain: Chain, accounts: Map<string, Account>) {
@@ -140,7 +142,7 @@ const testToken = (token: string) => {
       let contractAddress = deployerWallet.address + ".micro-dao";
       let tokenContractAddress = deployerWallet.address + token;
       const nonMember = accounts.get("wallet_5") as Account;
-      const INITIAL_BALANCE = 100;
+
       let block = chain.mineBlock([
         /*
          * Add transactions with:
@@ -166,12 +168,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
@@ -181,12 +185,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
@@ -199,7 +205,7 @@ const testToken = (token: string) => {
             types.list([
               types.tuple({
                 address: types.principal(deployerWallet.address),
-                amount: types.uint(101),
+                amount: types.uint(INITIAL_BALANCE + 1),
               }),
             ]),
             types.utf8("money for zoom"),
@@ -257,7 +263,7 @@ const testToken = (token: string) => {
       let contractAddress = deployerWallet.address + ".micro-dao";
       let tokenContractAddress = deployerWallet.address + token;
       const nonMember = accounts.get("wallet_5")!;
-      const INITIAL_BALANCE = 100;
+
       let block = chain.mineBlock([
         /*
          * Add transactions with:
@@ -274,12 +280,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
@@ -344,12 +352,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
@@ -406,7 +416,7 @@ const testToken = (token: string) => {
       let contractAddress = deployerWallet.address + ".micro-dao";
       let tokenContractAddress = deployerWallet.address + token;
       const nonMember = accounts.get("wallet_5")!;
-      const INITIAL_BALANCE = 100;
+
       let block = chain.mineBlock([
         /*
          * Add transactions with:
@@ -423,12 +433,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
@@ -498,12 +510,14 @@ const testToken = (token: string) => {
           contractAddress,
           "create-funding-proposal",
           [
-            types.list([
-              types.tuple({
-                address: types.principal(deployerWallet.address),
-                amount: types.uint(10),
-              }),
-            ]),
+            types.list(
+              Array(10).fill(
+                types.tuple({
+                  address: types.principal(deployerWallet.address),
+                  amount: types.uint(10),
+                })
+              )
+            ),
             types.utf8("money for zoom"),
             types.principal(tokenContractAddress),
           ],
